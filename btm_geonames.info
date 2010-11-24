@@ -1,0 +1,5 @@
+name = BTM GeoNames
+description = "Country & Province data import from GeoNames webservice and a custom FAPI element to handle it, with necessary javascript."
+core = 6.x
+
+package = "BTM"

@@ -1,0 +1,81 @@
+<?php
+function btm_geonames_install() {
+    drupal_install_schema('btm_geonames');
+}
+
+function btm_geonames_uninstall() {
+    drupal_uninstall_schema('btm_geonames');
+}
+
+function btm_geonames_schema() {
+    $schema = array();
+
+    $schema['btm_countries'] = array(
+        'fields' => array(
+            'country_code' => array(
+                'type' => 'varchar',
+                'length' => 2,
+                'not null' => TRUE,
+                'description' => "2 letter country code. Trying to use it for primary key.",
+            ),
+            'country_id' => array(
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+                'description' => "ISO numeric country code."
+            ),
+            'geoname_id' => array(
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+                'description' => "Internal Id from the GeoNames database. Needed for getting sub-units",
+            ),
+            'country_name' => array(
+                'type' => 'varchar',
+                'not null' => TRUE,
+                'length' => 255
+            ),
+        ),
+        'indexes' => array(
+            'geoname_id' => array('geoname_id'),
+        ),
+        'primary key' => array('country_code'),
+    );
+
+    $schema['btm_states_provinces'] = array(
+        'fields' => array(
+            'state_province_id' => array(
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+                'description' => "This is the internal ID from the GeoNames database for this object.  Only unique piece of data."
+            ),
+            'parent_geoname_id' => array(
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+                'description' => "Reference to the country's id.",
+            ),
+            'state_province_name' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+            ),
+        ),
+        'indexes' => array(
+            'parent_geoname_id' => array('parent_geoname_id')
+        ),
+        'foreign keys' => array(
+            'parent_geoname_id' => array('prc_countries' => 'geoname_id')
+        ),
+        'primary key' => array('state_province_id'),
+    );
+
+
+
+
+
+
+
+    return $schema;
+}

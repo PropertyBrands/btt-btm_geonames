@@ -1,0 +1,322 @@
+<?php
+
+require_once(drupal_get_path('module', 'btm_geonames') . '/btm_geonames.fapi.inc');
+
+function btm_geonames_example_form($form_state){
+  btm_geonames_add_js();
+drupal_add_js("Drupal.behaviors.bindStateProvince = function(context){
+  BTM.GeoNames.bindCountryProvinceSelectSet('body','#edit-country-province-country','#edit-country-province-state-province');
+}", "inline");
+
+
+  $form = array();
+
+  $form['country_province'] = array(
+    '#type' => 'country_province_select',
+    '#title' => 'Country/Province Select',
+    '#default_value' => array()
+   );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit'
+  );
+
+  return $form;
+}
+
+function btm_geonames_example_form_submit($form, &$form_state){
+  print '<pre>'; var_dump($form_state['values']);exit;
+}
+
+/**
+ * Include the necessary JS to activate the elements
+ */
+function btm_geonames_add_js(){
+  drupal_add_js(drupal_get_path('module','btm_geonames') . '/BTM.GeoNames.js');
+}
+
+/**
+ * Menu callback to build the confirm import form.
+ *
+ * @return string
+ */
+function btm_geonames_import_places() {
+  return drupal_get_form('btm_geonames_import_places_confirm');
+}
+
+/**
+ * Make sure they really want to import
+ */
+function btm_geonames_import_places_confirm() {
+  $form = array();
+
+  $form['intro_text'] = array(
+      '#value' => "<p>Click the 'Import Place Data' button below will remove all current country,
+            state and province info and replace it with fresh data from the GeoNames.org web service. It will probably
+            take a few minutes, so please be patient.</p>"
+  );
+
+  $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Import Place Data',
+  );
+
+  return $form;
+}
+
+/* * *
+ * May need validation later
+ */
+
+function btm_geonames_import_places_confirm_validate() {
+
+}
+
+/* * *
+ * Imports countries and provinces into the drupal db
+ *
+ * @todo investigate Duplicate primary key entry warnings in provinces table
+ */
+
+function btm_geonames_import_places_confirm_submit() {
+  //include the Service class
+  require_once(drupal_get_path('module', 'btm_geonames') . '/Service_GeoNames.class.php');
+  //New geo names service
+  $Service_GeoNames = new Service_GeoNames();
+
+  //get the countries
+  $response_countries = $Service_GeoNames->getCountriesData();
+
+  //if the service is working, we can safely truncate the tables
+  if (count($response_countries->country) > 0) {
+    db_query("TRUNCATE TABLE {btm_countries}");
+    db_query("TRUNCATE TABLE {btm_states_provinces}");
+  } else {
+    drupal_set_message("Geonames service is not functioning, try again later", "warning");
+
+    return false;
+  }
+
+  //Loop through the countries.  Insert country enetries
+  foreach ($response_countries->country as $country) {
+    $sql = "INSERT INTO {btm_countries}
+                    SET
+                    country_code = \"%s\",
+                    country_id = %d,
+                    geoname_id = %d,
+                    country_name = \"%s\"";
+
+    $result = db_query($sql, $country->countryCode, $country->isoNumeric, $country->geonameId, $country->countryName);
+
+    drupal_set_message("Added country <strong>{$country->countryName}</strong> to the database.", 'status');
+
+    //Get top level administrative areas for each country, store them
+    $response_provinces = $Service_GeoNames->getStatesProvinces($country->geonameId);
+
+    if ($response_provinces->totalResultsCount < 1) {
+      drupal_set_message(
+              "Could not retrieve any states/provinces for country: {$country->countryName}.
+                     There was either an error retrieving them or no data is available.",
+              "warning"
+      );
+      continue;
+    }
+
+    //store each province
+    foreach ($response_provinces->geoname as $province) {
+      $sql = "INSERT INTO {btm_states_provinces}
+                        SET
+                        state_province_id = %d,
+                        parent_geoname_id = %d,
+                        state_province_name = \"%s\"
+            ";
+
+      $result = db_query($sql, $province->geonameId, $country->geonameId, $province->name);
+
+      drupal_set_message(
+              "Added state/province/region <em>{$province->name}</em> of <strong>{$country->countryName}</strong> to the database.",
+              "status"
+      );
+    }
+  }
+}
+
+/**
+ * Return an array of countries suitable for FAPI select boxes
+ *
+ * @param string $default
+ * @return array
+ */
+function btm_geonames_get_countries($default = "US") {
+  $countries = array();
+
+  $result = db_query("SELECT * FROM {btm_countries} ORDER BY country_name");
+
+  $countries = array('0' => '----');
+  while ($country = db_fetch_object($result)) {
+    $countries[$country->geoname_id] = $country->country_name;
+  }
+
+  return $countries;
+}
+
+/**
+ * Return an array of provinces suitable for FAPI select boxes
+ *
+ *
+ * @param string $parent_geoname_id
+ * The geoname_id of the country
+ *
+ * @param string $default
+ * @return arrat
+ */
+function btm_geonames_get_states_provinces($parent_geoname_id, $default = "") {
+  $provinces = array();
+
+  if ($parent_geoname_id < 1) {
+    throw new Exception("No country geoname id given.");
+  }
+
+  $result = db_query("SELECT * FROM {btm_states_provinces}
+                            WHERE parent_geoname_id = %d
+                            ORDER BY state_province_name ASC", $parent_geoname_id);
+
+  $provinces = array('0' => '----');
+  while ($province = db_fetch_object($result)) {
+    $provinces[$province->state_province_id] = $province->state_province_name;
+  }
+
+  return $provinces;
+}
+
+/**
+ * Get a country by the geoname id
+ *
+ * @param string country_id
+ * @return string
+ */
+function btm_geonames_get_country($country_id) {
+  if ($country_id < 1) {
+    throw new Exception("Invalid country id");
+  }
+
+  $sql = "SELECT country_name FROM {btm_countries} WHERE geoname_id = %d";
+
+  $result = db_query($sql, $country_id);
+
+  $country = db_fetch_object($result);
+
+  return $country->country_name;
+}
+
+/**
+ * Get a state/province name by geoname id
+ *
+ * @param string $province_id
+ * @return string
+ */
+function btm_geonames_get_province($province_id) {
+  if ($province_id < 1) {
+    throw new Exception("Invalid province ID given.");
+  }
+
+  $sql = "SELECT state_province_name FROM {btm_states_provinces} WHERE state_province_id = %d";
+  $result = db_query($sql, $province_id);
+
+  $province = db_fetch_object($result);
+
+  return $province->state_province_name;
+}
+
+/**
+ * Ajax callback to get provinces for a country.  the $country_id is after the final slash
+ *
+ * @param int $country_id
+ * @return null
+ */
+function btm_geonames_ajax_get_states_provinces($country_id){
+    if(!$country_id) {
+        return array(
+          'success' => FALSE,
+          'states_provinces'=>array(),
+        );
+    }
+
+    $provinces = btm_geonames_get_states_provinces($country_id);
+    $response = array(
+      'success' => TRUE,
+      'states_provinces'=> $provinces,
+    );
+    
+    drupal_json($response);
+    exit;
+    
+}
+
+/**
+ * Tell drupal about the theme function for our select boxes
+ *
+ * @return array
+ */
+function btm_geonames_theme(){
+  return array(
+    'country_province_select' => array(
+        'arguments' => array('element' => NULL)
+    )
+  );
+}
+
+/**
+ * We have one menu callback for importing data and one for the ajax callback
+ *
+ * @return array
+ */
+function btm_geonames_menu() {
+  $items = array();
+
+  $items['admin/settings/import-geo-data'] = array(
+      'title' => 'Import Geographic Data',
+      'description' => 'Import Geographic Data',
+      'page callback' => 'btm_geonames_import_places',
+      'access arguments' => array('access content'),
+      'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['btm_geonames/get_states_provinces'] = array(
+    'title' => 'AJAX callback to get states/provinces',
+    'description' => 'ditto',
+    'page callback' => 'btm_geonames_ajax_get_states_provinces',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['btm_geonames/example'] = array(
+    'title' => 'Example of using the FAPI field',
+    'description' => 'ditto',
+    'page callback' => 'drupal_get_form',
+    'page arguments'=> array('btm_geonames_example_form'),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_help
+ *
+ * @param string $path
+ * @param string $arg
+ * @return string
+ */
+function btm_geonames_help($path, $arg) {
+  $output = '';
+
+  switch ($path) {
+    case "admin/help#btm_geonames":
+      $output = '<p>' . t("Country & Province data import from GeoNames webservice and a custom FAPI element to handle it, with necessary javascript.") . '</p>';
+      break;
+  }
+
+  return $output;
+}

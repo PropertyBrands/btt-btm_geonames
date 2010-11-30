@@ -2,7 +2,8 @@ var BTM = BTM || {}
 
 BTM.GeoNames = {
   get_provinces_path: 'btm_geonames/get_states_provinces',
-  showProvincesSelect: function(selector, context, states_provinces){
+  showProvincesSelect: function(selector, context, states_provinces, default_selected){
+    var default_selected = default_selected || '';
     var select = $(selector, context);
     var options = select.attr('options');
 
@@ -11,9 +12,11 @@ BTM.GeoNames = {
     $.each(states_provinces, function(val, text) {
       options[options.length] = new Option(text, val);
     });
+
+    $(select).val(default_selected);
   },
 
-  bindCountryProvinceSelectSet: function(context, country_select, province_select) {
+  bindCountryProvinceSelectSet: function(context, country_select, province_select, default_province) {
    //console.log(country_select, context);
    if(!country_select) {
       country_select = '#edit-country';
@@ -33,7 +36,7 @@ BTM.GeoNames = {
           'dataType': 'json',
           'type':'GET',
           'success': function(response){
-            BTM.GeoNames.showProvincesSelect(province_select, context, response.states_provinces);
+            BTM.GeoNames.showProvincesSelect(province_select, context, response.states_provinces, default_province);
           },
           'error': function(response){
 

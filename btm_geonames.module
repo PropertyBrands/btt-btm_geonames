@@ -320,3 +320,8 @@ function btm_geonames_help($path, $arg) {
 
   return $output;
 }
+
+
+function btm_geonames_views_api(){
+  return array('api' => 2);
+}

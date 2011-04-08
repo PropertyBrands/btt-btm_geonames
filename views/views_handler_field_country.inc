@@ -6,8 +6,10 @@
  */
 class views_handler_field_country extends views_handler_field{
     public function render($values){
+      
       //You need to change this to reflect your country id field
-      $output = btm_geonames_get_country($values->country);
+      
+      $output = btm_geonames_get_country($values->{$this->field_alias});
 
       return $output;
     }

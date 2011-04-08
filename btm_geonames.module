@@ -1,6 +1,8 @@
 <?php
 
-require_once(drupal_get_path('module', 'btm_geonames') . '/btm_geonames.fapi.inc');
+define('BTM_GEONAMES_PATH_TO_MODULE', drupal_get_path('module', 'btm_geonames'));
+
+require_once(BTM_GEONAMES_PATH_TO_MODULE . '/btm_geonames.fapi.inc');
 
 function btm_geonames_example_form($form_state){
   btm_geonames_add_js();
@@ -33,7 +35,7 @@ function btm_geonames_example_form_submit($form, &$form_state){
  * Include the necessary JS to activate the elements
  */
 function btm_geonames_add_js(){
-  drupal_add_js(drupal_get_path('module','btm_geonames') . '/BTM.GeoNames.js');
+  drupal_add_js(BTM_GEONAMES_PATH_TO_MODULE . '/BTM.GeoNames.js');
 }
 
 /**
@@ -81,7 +83,7 @@ function btm_geonames_import_places_confirm_validate() {
 
 function btm_geonames_import_places_confirm_submit() {
   //include the Service class
-  require_once(drupal_get_path('module', 'btm_geonames') . '/Service_GeoNames.class.php');
+  require_once(BTM_GEONAMES_PATH_TO_MODULE . '/Service_GeoNames.class.php');
   //New geo names service
   $Service_GeoNames = new Service_GeoNames();
 
@@ -198,7 +200,8 @@ function btm_geonames_get_states_provinces($parent_geoname_id, $default = "") {
  */
 function btm_geonames_get_country($country_id) {
   if ($country_id < 1) {
-    throw new Exception("Invalid country id");
+    //throw new Exception("Invalid country id");
+    return false;
   }
 
   $sql = "SELECT country_name FROM {btm_countries} WHERE geoname_id = %d";
@@ -218,7 +221,8 @@ function btm_geonames_get_country($country_id) {
  */
 function btm_geonames_get_province($province_id) {
   if ($province_id < 1) {
-    throw new Exception("Invalid province ID given.");
+    //throw new Exception("Invalid province ID given.");
+    return false;
   }
 
   $sql = "SELECT state_province_name FROM {btm_states_provinces} WHERE state_province_id = %d";
@@ -323,5 +327,5 @@ function btm_geonames_help($path, $arg) {
 
 
 function btm_geonames_views_api(){
-  return array('api' => 2);
+  return array('api' => 2, 'path' => BTM_GEONAMES_PATH_TO_MODULE . '/views');
 }

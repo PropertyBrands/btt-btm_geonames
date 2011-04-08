@@ -1,3 +1,9 @@
+Drupal.behaviors.bindCountryProvinceSelect = function(context) {
+  if($("#edit-country-province-wrapper", context).length) {
+    BTM.GeoNames.bindCountryProvinceSelectSet(context);
+  }
+}
+
 var BTM = BTM || {}
 
 BTM.GeoNames = {
@@ -19,14 +25,14 @@ BTM.GeoNames = {
   bindCountryProvinceSelectSet: function(context, country_select, province_select, default_province) {
    //console.log(country_select, context);
    if(!country_select) {
-      country_select = '#edit-country';
+      country_select = '#edit-country-province-country';
     }
 
     if(!province_select) {
-      province_select = '#edit-state_province';
+      province_select = '#edit-country-province-state-province';
     }
 
-    $(country_select, context).change(
+  $(country_select, context).change(
       function(){
         var country_id = $(this).val();
 

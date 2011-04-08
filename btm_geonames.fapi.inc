@@ -80,5 +80,7 @@ function btm_geonames_fapi_country_province_select_validate($element){
  * @return string
  */
 function theme_country_province_select($element){
+  btm_geonames_add_js();
+
   return theme('form_element', $element, $element['#children']);
 }

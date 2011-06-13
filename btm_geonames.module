@@ -214,6 +214,30 @@ function btm_geonames_get_country($country_id) {
 }
 
 /**
+ * Get an ID by Name. There's a few synonyms for 'United States' attached.
+ *
+ * @param string $country_name
+ * @return int
+ */
+function btm_geonames_get_country_id($country_name) {
+  $united_states_synonyms = array('usa', 'us', 'united states of america', 'u.s.', 'u.s.a.');
+
+  $country_name = trim(strtolower($country_name));
+
+  if(in_array($country_name, $united_states_synonyms)) {
+    $country_name = 'United States';
+  }
+
+  $sql = "SELECT country_id FROM {btm_countries} WHERE `country_name` LIKE \"%s\"";
+  $result = db_query($sql, $country_name);
+
+  $country = db_fetch_object($result);
+
+  return $country->country_id;
+
+}
+
+/**
  * Get a state/province name by geoname id
  *
  * @param string $province_id
@@ -231,6 +255,24 @@ function btm_geonames_get_province($province_id) {
   $province = db_fetch_object($result);
 
   return $province->state_province_name;
+}
+
+/**
+ * Lookup an ID by Name
+ *
+ * @param string $province_name
+ * @return int
+ */
+function btm_geonames_get_province_id($province_name) {
+  $province_name = trim($province_name);
+
+  $sql = "SELECT state_province_id FROM {btm_states_provinces} WHERE state_province_name LIKE \"%s\"";
+  $result = db_query($sql, $province_name);
+
+  $province = db_fetch_object($result);
+
+  return $province->state_province_id;
+
 }
 
 /**

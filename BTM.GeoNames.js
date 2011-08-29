@@ -15,8 +15,19 @@ BTM.GeoNames = {
 
     $('option', select).remove();
 
+
+//    var names = new Array();
+//
+//    $.each(states_provinces, function(val, text) {
+//      names.push(text);
+//    });
+//
+//    names.sort();
+//
+//    PRC.console.log(names);
+
     $.each(states_provinces, function(val, text) {
-      options[options.length] = new Option(text, val);
+      options[options.length] = new Option(val, text);
     });
 
     $(select).val(default_selected);
@@ -36,7 +47,7 @@ BTM.GeoNames = {
       function(){
         var country_id = $(this).val();
 
-        var url = Drupal.settings.basePath + BTM.GeoNames.get_provinces_path + '/' + country_id;
+        var url = Drupal.settings.basePath + BTM.GeoNames.get_provinces_path + '/' + country_id + '/0/TRUE';
         $.ajax({
           'url': url,
           'dataType': 'json',

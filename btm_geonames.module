@@ -173,9 +173,17 @@ function btm_geonames_get_countries($default = "US") {
  * @param string $default
  * @return arrat
  */
-function btm_geonames_get_states_provinces($parent_geoname_id, $default = "") {
+function btm_geonames_get_states_provinces($parent_geoname_id, $default = "", $is_for_js = FALSE) {
   $provinces = array();
 
+$url_is_for_js = arg(4);
+
+if($url_is_for_js == 'TRUE') {
+  $is_for_js = TRUE;
+}
+
+//var_dump($parent_geoname_id, $default, $is_for_js);
+//  var_dump($dev_parent, $dev_default,$dev_is_for_js);die;
   if ($parent_geoname_id < 1) {
     throw new Exception("No country geoname id given.");
   }
@@ -184,10 +192,16 @@ function btm_geonames_get_states_provinces($parent_geoname_id, $default = "") {
                             WHERE parent_geoname_id = %d
                             ORDER BY state_province_name ASC", $parent_geoname_id);
 
-  $provinces = array('0' => '----');
+  $provinces = array('----' => '0');
   while ($province = db_fetch_object($result)) {
-    $provinces[$province->state_province_id] = $province->state_province_name;
+    $provinces[$province->state_province_name] = $province->state_province_id;
   }
+
+  if(!$is_for_js) {
+    $provinces = array_flip($provinces);
+  }
+  
+  
 
   return $provinces;
 }
@@ -228,12 +242,12 @@ function btm_geonames_get_country_id($country_name) {
     $country_name = 'United States';
   }
 
-  $sql = "SELECT country_id FROM {btm_countries} WHERE `country_name` LIKE \"%s\"";
-  $result = db_query($sql, $country_name);
 
+  $sql = "SELECT * FROM {btm_countries} WHERE `country_name` LIKE \"%s\"";
+  $result = db_query($sql, $country_name);
   $country = db_fetch_object($result);
 
-  return $country->country_id;
+  return $country->geoname_id;
 
 }
 
@@ -334,6 +348,7 @@ function btm_geonames_menu() {
     'description' => 'ditto',
     'page callback' => 'btm_geonames_ajax_get_states_provinces',
     'access arguments' => array('access content'),
+    'page arguments' => array(2, 3, 4),
     'type' => MENU_CALLBACK,
   );
 
